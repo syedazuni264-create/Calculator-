@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Restaurant Touch Game</title>
+<style>
+  body {
+    margin: 0;
+    background: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: Arial;
+    color: white;
+    overflow: hidden;
+    touch-action: none;
+  }
+  canvas {
+    border: 3px solid #f39c12;
+    border-radius: 15px;
+    background: #f4e4bc;
+  }
+ .ui {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+  }
+ .action-btn {
+    position: absolute;
+    bottom: 100px;
+    right: 30px;
+    background: #e17055;
+    color: white;
+    border: none;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 4px 10px black;
+  }
+ .shop {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    padding: 8px;
+    border-radius: 10px;
+    display: flex;
+    gap: 5px;
+  }
+ .shop button {
+    background: #27ae60;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+  }
+  #joystick {
+    position: absolute;
+    bottom: 80px;
+    left: 40px;
+    width: 100px;
+    height: 100px;
+    border: 3px solid white;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+  }
+  #stick {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    left: 30px;
+    top: 30px;
+  }
+</style>
+</head>
+<body>
+<div class="ui">💰 $<span id="money">100</span> | 🍔 <span id="food">0</span> | 🏢 Lv<span id="level">1</span></div>
+
+<canvas id="game" width="400" height="650"></canvas>
+
+<div id="joystick"><div id="stick"></div></div>
+<button class="action-btn" ontouchstart="action()">⚡</button>
+
+<div class="shop">
+  <button onclick="buyTable()">🪑 $200</button>
+  <button onclick="hireWorker()">👨‍🍳 $300</button>
+  <button onclick="upgrade()">⬆️ $500</button>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const joystick = document.getElementById('joystick');
+const stick = document.getElementById('stick');
+
+// Game Data
+let money = 100;
+let foodOnCounter = 0;
+let level = 1;
+let owner = {x: 200, y: 500, hasFood: false, speed: 4};
+let dx = 0, dy = 0; // direction
+
+let machine = {x: 50, y: 150, w: 80, h: 80};
+let counter = {x: 160, y: 300, w: 100, h: 50};
+let tables = [{x: 300, y: 450, w: 60, h: 60, customer: false}];
+let workers = 0;
+
+// JOYSTICK CONTROL - Finger se
+let touching = false;
+joystick.addEventListener('touchstart', e => touching = true);
+joystick.addEventListener('touchend', e => { touching = false; dx=0; dy=0; resetStick(); });
+
+joystick.addEventListener('touchmove', e => {
+  let touch = e.touches[0];
+  let rect = joystick.getBoundingClientRect();
+  let cx = rect.left + rect.width/2;
+  let cy = rect.top + rect.height/2;
+
+  dx = touch.clientX - cx;
+  dy = touch.clientY - cy;
+  let dist = Math.sqrt(dx*dx + dy*dy);
+  let maxDist = 30;
+
+  if(dist > maxDist) {
+    dx = dx/dist * maxDist;
+    dy = dy/dist * maxDist;
+  }
+
+  stick.style.left = (30 + dx) + 'px';
+  stick.style.top = (30 + dy) + 'px';
+});
+
+function resetStick() {
+  stick.style.left = '30px';
+  stick.style.top = '30px';
+}
+
+function updateUI() {
+  document.getElementById('money').innerText = money;
+  document.getElementById('food').innerText = foodOnCounter;
+  document.getElementById('level').innerText = level;
+}
+
+function isNear(a, b) {
+  return Math.abs(owner.x - (b.x + b.w/2)) < 70 && Math.abs(owner.y - (b.y + b.h/2)) < 70;
+}
+
+// ACTION BUTTON
+function action() {
+  // Machine
+  if(isNear(owner, machine) && money >= 10 &&!owner.hasFood) {
+    money -= 10;
+    owner.hasFood = true;
+  }
+  // Counter
+  else if(isNear(owner, counter) && owner.hasFood) {
+    foodOnCounter++;
+    owner.hasFood = false;
+  }
+  // Table
+  else {
+    tables.forEach(t => {
+      if(isNear(owner, t) && foodOnCounter > 0) {
+        foodOnCounter--;
+        let earn = 30 * level;
+        money += earn;
+        t.customer = true;
+        setTimeout(() => t.customer = false, 1000);
+      }
+    });
+  }
+  updateUI();
+}
+
+function buyTable() { if(money >= 200) { money -= 200; tables.push({x: 300, y: 380 - tables.length*70, w: 60, h: 60, customer: false}); } updateUI(); }
+function hireWorker() { if(money >= 300) { money -= 300; workers++; } updateUI(); }
+function upgrade() { if(money >= 500) { money -= 500; level++; } updateUI(); }
+
+// DRAW
+function draw() {
+  ctx.clearRect(0,0,400,650);
+  ctx.fillStyle = '#e9c46a';
+  ctx.fillRect(0,0,400,650);
+
+  // Machine
+  ctx.fillStyle = '#e76f51';
+  ctx.fillRect(machine.x, machine.y, machine.w, machine.h);
+  ctx.fillStyle = 'white'; ctx.font = '12px Arial';
+  ctx.fillText('MACHINE', machine.x+10, machine.y+45);
+
+  // Counter
+  ctx.fillStyle = '#2a9d8f';
+  ctx.fillRect(counter.x, counter.y, counter.w, counter.h);
+  ctx.fillStyle = 'white'; ctx.fillText('COUNTER', counter.x+20, counter.y+30);
+  for(let i=0; i<foodOnCounter; i++){ ctx.font = '20px Arial'; ctx.fillText('🍔', counter.x+10+i*25, counter.y+25); }
+
+  // Tables
+  tables.forEach(t => {
+    ctx.fillStyle = '#8b4513';
+    ctx.fillRect(t.x, t.y, t.w, t.h);
+    ctx.fillStyle = 'white'; ctx.font = '12px Arial';
+    ctx.fillText('TABLE', t.x+10, t.y+35);
+    if(t.customer) { ctx.font = '25px Arial'; ctx.fillText('👤', t.x+18, t.y+25); }
+  });
+
+  // Owner
+  ctx.font = '35px Arial';
+  ctx.fillText(owner.hasFood? '🧑‍🍳🍔' : '🧑‍🍳', owner.x, owner.y);
+}
+
+// GAME LOOP
+function move() {
+  if(touching) {
+    owner.x += dx/10 * owner.speed;
+    owner.y += dy/10 * owner.speed;
+  }
+  // boundary
+  owner.x = Math.max(20, Math.min(370, owner.x));
+  owner.y = Math.max(40, Math.min(620, owner.y));
+}
+
+function gameLoop() {
+  move();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Auto worker
+setInterval(() => {
+  if(workers > 0 && foodOnCounter < 5 && money >= 10) {
+    money -= 10;
+    foodOnCounter++;
+  }
+  updateUI();
+}, 2000);
+
+gameLoop();
+updateUI();
+</script>
+</body>
+</html>
