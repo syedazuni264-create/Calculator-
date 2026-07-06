@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>My Running Game</title>
+<style>
+  body { text-align:center; background:#87CEEB; }
+  canvas { border:2px solid black; background:#90EE90; }
+  #score { font-size:24px; font-weight:bold; }
+</style>
+</head>
+<body>
+<h2>Tap to Jump! 🏃</h2>
+<div id="score">Score: 0</div>
+<canvas id="game" width="400" height="200"></canvas>
+
+<script>
+let canvas = document.getElementById("game");
+let ctx = canvas.getContext("2d");
+
+let player = {x:50, y:150, w:30, h:30, jump:false};
+let gravity = 2;
+let obstacle = {x:400, y:170, w:20, h:30};
+let score = 0;
+let gameOver = false;
+
+// Jump when tap/click
+document.addEventListener("click", ()=>{ 
+  if(!player.jump){ player.jump = true; player.y -= 60; }
+});
+
+// Game loop
+function update(){
+  if(gameOver) return;
+  
+  ctx.clearRect(0,0,400,200);
+  
+  // Gravity
+  if(player.y < 150){ player.y += gravity; } 
+  else { player.y = 150; player.jump = false; }
+  
+  // Move obstacle
+  obstacle.x -= 5;
+  if(obstacle.x < 0){ 
+    obstacle.x = 400; 
+    score++; 
+    document.getElementById("score").innerText = "Score: " + score;
+  }
+  
+  // Draw player
+  ctx.fillStyle = "blue";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+  
+  // Draw obstacle
+  ctx.fillStyle = "red";
+  ctx.fillRect(obstacle.x, obstacle.y, obstacle.w, obstacle.h);
+  
+  // Collision check
+  if(player.x < obstacle.x + obstacle.w &&
+     player.x + player.w > obstacle.x &&
+     player.y < obstacle.y + obstacle.h &&
+     player.y + player.h > obstacle.y){
+       alert("Game Over! Score: " + score);
+       gameOver = true;
+  }
+  
+  requestAnimationFrame(update);
+}
+update();
+</script>
+</body>
+</html>
